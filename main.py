@@ -1,14 +1,14 @@
-from playwright.sync_api import sync_playwright, Error
+from playwright.sync_api import Error, sync_playwright
 
 
-def html_to_png(url: str, output_file: str):
+def remote_html():
     with sync_playwright() as p:
-        browser = p.webkit.launch(headless=True)  # 启动无头模式
-
+        browser = p.webkit.launch(headless=True)
         try:
             page = browser.new_page()
-            page.goto(url)
-            page.screenshot(path=output_file, full_page=True)
+            page.goto("https://playwright.dev/python/")
+            page.wait_for_load_state("networkidle")
+            page.screenshot(path="remote.png", full_page=True)
         except Error as e:
             print(f"An error occurred: {e}")
         finally:
@@ -16,6 +16,30 @@ def html_to_png(url: str, output_file: str):
                 browser.close()
 
 
-url = "https://www.google.com"
-output_file = "/output/google.png"
-html_to_png(url, output_file)
+def local_html():
+    # export DEBUG=pw:browser*
+    with open("local.html", encoding="utf-8") as f:
+        html = f.read()
+
+    with sync_playwright() as p:
+        browser = p.webkit.launch(headless=True)
+        try:
+            page = browser.new_page()
+            page.set_content(html)
+            wrapper = page.query_selector(".wrapper")
+            if wrapper:
+                wrapper.screenshot(path="local.png", type="png")
+        except Error as e:
+            print(f"An error occurred: {e}")
+        finally:
+            if browser.is_connected:
+                browser.close()
+
+
+def main():
+    remote_html()
+    local_html()
+
+
+if __name__ == "__main__":
+    main()
